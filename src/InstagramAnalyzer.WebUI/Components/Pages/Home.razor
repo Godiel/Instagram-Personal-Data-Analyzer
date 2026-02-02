@@ -1,7 +1,257 @@
 ﻿@page "/"
+@rendermode InteractiveServer
+@using InstagramAnalyzer.Application.Interfaces
+@using InstagramAnalyzer.Domain.Entities
+@using InstagramAnalyzer.Domain.Enums
+@inject IInstagramService InstagramService
+@inject IRelationshipAnalyzer Analyzer
 
-<PageTitle>Home</PageTitle>
+<div class="row justify-content-center">
+    <div class="col-lg-12">
 
-<h1>Hello, world!</h1>
+        @* --- HEADER --- *@
+        <div class="text-center mb-5">
+            <h1 class="fw-black text-primary">Relaciones de Instagram</h1>
+            <p class="text-muted">Analiza tus datos de forma 100% privada y local.</p>
+        </div>
 
-Welcome to your new app.
+        @* --- UPLOAD SECTION --- *@
+        <div class="card border-0 shadow-sm mb-5 bg-light">
+            <div class="card-body p-5 text-center">
+                <i class="bi bi-cloud-arrow-up display-1 text-primary"></i>
+                <h3 class="mt-3">Sube tu archivo .zip</h3>
+                <div class="d-flex flex-column align-items-center mt-4">
+                    <InputFile OnChange="OnInputFileChange" class="form-control w-50" accept=".zip" />
+                    @if (selectedFile != null && !dataLoaded && !isProcessing)
+                    {
+                        <button class="btn btn-primary btn-lg rounded-pill px-5 shadow mt-4" @onclick="AnalyzeData">
+                            <i class="bi bi-play-fill me-2"></i> Analizar Ahora
+                        </button>
+                    }
+                </div>
+                @if (isProcessing)
+                {
+                    <div class="mt-4">
+                        <div class="spinner-grow text-primary" role="status"></div>
+                        <p class="mt-2 fw-bold">Procesando metadatos...</p>
+                    </div>
+                }
+            </div>
+        </div>
+
+        @* --- RESULTS SECTION --- *@
+        @if (dataLoaded)
+        {
+            <div class="fade-in">
+                <div class="nav-scroller mb-4">
+                    <ul class="nav nav-pills flex-nowrap" style="overflow-x: auto; padding-bottom: 10px; white-space: nowrap; -webkit-overflow-scrolling: touch;">
+                        <li class="nav-item">
+                            <button class="nav-link @(activeTab == "non" ? "active" : "")" @onclick='() => activeTab = "non"'>
+                                No te siguen <span class="badge bg-light text-dark ms-1">@nonFollowers?.Count()</span>
+                            </button>
+                        </li>
+                        <li class="nav-item">
+                            <button class="nav-link @(activeTab == "fans" ? "active" : "")" @onclick='() => activeTab = "fans"'>
+                                Fans <span class="badge bg-light text-dark ms-1">@fans?.Count()</span>
+                            </button>
+                        </li>
+                        <li class="nav-item">
+                            <button class="nav-link @(activeTab == "mutual" ? "active" : "")" @onclick='() => activeTab = "mutual"'>
+                                Mutuos <span class="badge bg-light text-dark ms-1">@mutuals?.Count()</span>
+                            </button>
+                        </li>
+                        <li class="nav-item">
+                            <button class="nav-link @(activeTab == "pendingfr" ? "active" : "")" @onclick='() => activeTab = "pendingfr"'>
+                                Solicitudes Enviadas <span class="badge bg-light text-dark ms-1">@pendingFollowRequests?.Count()</span>
+                            </button>
+                        </li>
+                        <li class="nav-item">
+                            <button class="nav-link @(activeTab == "receivedfr" ? "active" : "")" @onclick='() => activeTab = "receivedfr"'>
+                                Solicitudes Recibidas <span class="badge bg-light text-dark ms-1">@requestsReceived?.Count()</span>
+                            </button>
+                        </li>
+                        <li class="nav-item">
+                            <button class="nav-link @(activeTab == "recentfr" ? "active" : "")" @onclick='() => activeTab = "recentfr"'>
+                                Solicitudes Recientes <span class="badge bg-light text-dark ms-1">@recentFollowRequests?.Count()</span>
+                            </button>
+                        </li>
+                        <li class="nav-item">
+                            <button class="nav-link @(activeTab == "recentufr" ? "active" : "")" @onclick='() => activeTab = "recentufr"'>
+                                Dejados de seguir <span class="badge bg-light text-dark ms-1">@recentlyUnfollowed?.Count()</span>
+                            </button>
+                        </li>
+                        <li class="nav-item">
+                            <button class="nav-link @(activeTab == "close" ? "active" : "")" @onclick='() => activeTab = "close"'>
+                                Mejores Amigos <span class="badge bg-light text-dark ms-1">@closeFriends?.Count()</span>
+                            </button>
+                        </li>
+                        <li class="nav-item">
+                            <button class="nav-link @(activeTab == "blocked" ? "active" : "")" @onclick='() => activeTab = "blocked"'>
+                                Bloqueados <span class="badge bg-light text-dark ms-1">@blocked?.Count()</span>
+                            </button>
+                        </li>
+                        <li class="nav-item">
+                            <button class="nav-link @(activeTab == "favs" ? "active" : "")" @onclick='() => activeTab = "favs"'>
+                                Favoritos <span class="badge bg-light text-dark ms-1">@favoriteProfiles?.Count()</span>
+                            </button>
+                        </li>
+                        <li class="nav-item">
+                            <button class="nav-link @(activeTab == "restricted" ? "active" : "")" @onclick='() => activeTab = "restricted"'>
+                                Restringidos <span class="badge bg-light text-dark ms-1">@restrictedProfiles?.Count()</span>
+                            </button>
+                        </li>
+                        <li class="nav-item">
+                            <button class="nav-link @(activeTab == "removeds" ? "active" : "")" @onclick='() => activeTab = "removeds"'>
+                                Sugerencias Eliminadas <span class="badge bg-light text-dark ms-1">@removedSuggestions?.Count()</span>
+                            </button>
+                        </li>
+                    </ul>
+                </div>
+
+                <div class="card border-0 shadow-sm">
+                    @if (GetCurrentList().Any())
+                    {
+                        <div class="list-group list-group-flush">
+                            @foreach (var user in GetCurrentList())
+                            {
+                                <div class="list-group-item d-flex justify-content-between align-items-center p-3">
+                                    <div>
+                                        <span class="fw-bold">@user.DisplayName</span>
+                                        <div class="text-muted x-small">Desde: @user.OccurredAt.ToShortDateString()</div>
+                                    </div>
+                                    <a href="@user.InstagramLink" target="_blank" class="btn btn-sm btn-primary rounded-pill px-3">
+                                        Perfil <i class="bi bi-box-arrow-up-right ms-1"></i>
+                                    </a>
+                                </div>
+                            }
+                        </div>
+                    }
+                    else
+                    {
+                        <div class="text-center p-5 bg-white">
+                            <i class="bi bi-check-circle text-success display-3"></i>
+                            <h4 class="mt-3">¡Nada por aquí!</h4>
+                            <p class="text-muted">No hay usuarios en esta categoría.</p>
+                        </div>
+                    }
+                </div>
+            </div>
+        }
+    </div>
+</div>
+
+@if (!string.IsNullOrEmpty(errorMessage))
+{
+    <div class="alert alert-danger alert-dismissible fade show shadow-sm position-fixed bottom-0 end-0 m-3" style="z-index: 1050" role="alert">
+        <i class="bi bi-exclamation-triangle-fill me-2"></i>
+        <strong>¡Ops!</strong> @errorMessage
+        <button type="button" class="btn-close" @onclick="() => errorMessage = string.Empty"></button>
+    </div>
+}
+
+@code {
+    private IBrowserFile? selectedFile;
+    private bool isProcessing = false;
+    private bool dataLoaded = false;
+    private string errorMessage = string.Empty;
+    private string activeTab = "non";
+
+    // Listas analizadas
+    private IEnumerable<InstagramProfile>? nonFollowers;
+    private IEnumerable<InstagramProfile>? fans;
+    private IEnumerable<InstagramProfile>? mutuals;
+
+    // Listas directas de Instagram
+    private IEnumerable<InstagramProfile>? blocked;
+    private IEnumerable<InstagramProfile>? closeFriends;
+    private IEnumerable<InstagramProfile>? requestsReceived;
+    private IEnumerable<InstagramProfile>? pendingFollowRequests;
+    private IEnumerable<InstagramProfile>? favoriteProfiles;
+    private IEnumerable<InstagramProfile>? recentFollowRequests;
+    private IEnumerable<InstagramProfile>? recentlyUnfollowed;
+    private IEnumerable<InstagramProfile>? removedSuggestions;
+    private IEnumerable<InstagramProfile>? restrictedProfiles;
+
+    private void OnInputFileChange(InputFileChangeEventArgs e)
+    {
+        selectedFile = e.File;
+        dataLoaded = false;
+        errorMessage = string.Empty;
+    }
+
+    private async Task AnalyzeData()
+    {
+        if (selectedFile == null) return;
+        isProcessing = true;
+        try
+        {
+            using var stream = selectedFile.OpenReadStream(maxAllowedSize: 50 * 1024 * 1024);
+            using var ms = new MemoryStream();
+            await stream.CopyToAsync(ms);
+
+            // Extracción Secuencial - Reseteando ms.Position antes de cada lectura
+            ms.Position = 0;
+            var followers = await InstagramService.GetProfilesFromZipAsync(ms, RelationshipType.Followers);
+
+            ms.Position = 0;
+            var following = await InstagramService.GetProfilesFromZipAsync(ms, RelationshipType.Following);
+
+            ms.Position = 0;
+            blocked = await InstagramService.GetProfilesFromZipAsync(ms, RelationshipType.BlockedProfiles);
+
+            ms.Position = 0;
+            closeFriends = await InstagramService.GetProfilesFromZipAsync(ms, RelationshipType.CloseFriends);
+
+            ms.Position = 0;
+            requestsReceived = await InstagramService.GetProfilesFromZipAsync(ms, RelationshipType.FollowRequetsReceived);
+
+            ms.Position = 0;
+            pendingFollowRequests = await InstagramService.GetProfilesFromZipAsync(ms, RelationshipType.PendingFollowRequests);
+
+            ms.Position = 0;
+            favoriteProfiles = await InstagramService.GetProfilesFromZipAsync(ms, RelationshipType.ProfilesFavorited);
+
+            ms.Position = 0;
+            recentFollowRequests = await InstagramService.GetProfilesFromZipAsync(ms, RelationshipType.RecentFollowRequests);
+
+            ms.Position = 0;
+            recentlyUnfollowed = await InstagramService.GetProfilesFromZipAsync(ms, RelationshipType.RecentlyUnfollowed);
+
+            ms.Position = 0;
+            removedSuggestions = await InstagramService.GetProfilesFromZipAsync(ms, RelationshipType.RemovedSuggestions);
+
+            ms.Position = 0;
+            restrictedProfiles = await InstagramService.GetProfilesFromZipAsync(ms, RelationshipType.RestrictedProfiles);
+
+            // Análisis
+            nonFollowers = Analyzer.GetNonFollowers(followers, following);
+            fans = Analyzer.GetFans(followers, following);
+            mutuals = Analyzer.GetMutuals(followers, following);
+
+            dataLoaded = true;
+        }
+        catch (Exception ex)
+        {
+            errorMessage = $"Error: {ex.Message}";
+            Console.WriteLine(ex.ToString());
+        }
+        finally { isProcessing = false; }
+    }
+
+    private IEnumerable<InstagramProfile> GetCurrentList() => activeTab switch
+    {
+        "non" => nonFollowers ?? Enumerable.Empty<InstagramProfile>(),
+        "fans" => fans ?? Enumerable.Empty<InstagramProfile>(),
+        "mutual" => mutuals ?? Enumerable.Empty<InstagramProfile>(),
+        "receivedfr" => requestsReceived ?? Enumerable.Empty<InstagramProfile>(),
+        "pendingfr" => pendingFollowRequests ?? Enumerable.Empty<InstagramProfile>(),
+        "blocked" => blocked ?? Enumerable.Empty<InstagramProfile>(),
+        "close" => closeFriends ?? Enumerable.Empty<InstagramProfile>(),
+        "favs" => favoriteProfiles ?? Enumerable.Empty<InstagramProfile>(),
+        "recentfr" => recentFollowRequests ?? Enumerable.Empty<InstagramProfile>(),
+        "recentufr" => recentlyUnfollowed ?? Enumerable.Empty<InstagramProfile>(),
+        "removeds" => removedSuggestions ?? Enumerable.Empty<InstagramProfile>(),
+        "restricted" => restrictedProfiles ?? Enumerable.Empty<InstagramProfile>(),
+        _ => Enumerable.Empty<InstagramProfile>()
+    };
+}
