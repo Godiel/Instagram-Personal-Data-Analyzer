@@ -75,5 +75,24 @@
    ```bash
    dotnet watch run --project src/InstagramAnalyzer.WebUI
 
+---
+
+## 🐳 Ejecución con Docker / Running with Docker
+
+[ES] Si tienes Docker instalado, puedes ejecutar la aplicación sin necesidad de instalar el SDK de .NET:
+[EN] If you have Docker installed, you can run the application without installing the .NET SDK:
+
+1. Clonar el repositorio / Clone the repo:
+   ```bash
+   docker build -t instagram-analyzer .
+
+2. Ejecutar el contenedor / Run the container:
+   ```bash
+   docker run -d -p 5000:8080 --name ig-analyzer instagram-analyzer
+
+3. Acceso / Access: 
+   ```bash
+   http://localhost:5000 
+
 ## 👨‍💻 Developed by
 **Godiel** [![GitHub](https://img.shields.io/badge/GitHub-Profile-181717?style=flat&logo=github)](https://github.com/Godiel)
