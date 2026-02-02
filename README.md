@@ -20,7 +20,7 @@
 6. Selecciona el formato **JSON** (Obligatorio, el formato HTML no es compatible).
 7. Una vez que Meta genere el archivo, descarga el `.zip` y cárgalo en la aplicación.
 
-> 🔗 [Documentación oficial de ayuda de Instagram](https://help.instagram.com/181231772500358)
+> 🔗 [Documentación oficial de ayuda de Instagram](https://help.instagram.com/181231772500920)
 
 ### [EN] Steps to download your data:
 1. Go to **Meta Accounts Center** > **Your information and permissions**.
